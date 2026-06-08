@@ -12,6 +12,18 @@ Backend: https://e-commerse-website-backend-b45e.onrender.com
 
 ---
 
+## 🔐 Admin Demo Access
+
+To access the admin dashboard, use the following demo credentials:
+
+- **Email:** rachitthapliyal61@gmail.com  
+- **Password:** Rachit@123  
+
+
+⚠️ Note:
+This is a demo account provided only for testing and evaluation purposes.
+Please do not use it for production or sensitive data.
+
 ## ✨ Features
 
 ### 👤 User Features
