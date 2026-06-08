@@ -4,7 +4,7 @@ const authMiddleware = require('../middlewares/auth.middleware');
 const adminMiddleware = require('../middlewares/admin.middleware');
 const router = express.Router();
 
-router.get('/get-all-categories', authMiddleware, getAllCategories);
+router.get('/get-all-categories', getAllCategories);
 router.get('/admin/all', authMiddleware, adminMiddleware, getAllCategoriesAdmin);
 router.get('/get-category/:id', authMiddleware, getCategoryById);
 router.post('/create-category', authMiddleware, adminMiddleware, createCategory);
