@@ -17,11 +17,13 @@ const cors = require('cors');
 
 // middleware
 app.use(cors({
-     origin: "http://localhost:5173",
+     origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
 }));
 
 app.use(express.json())
+
+const PORT = process.env.PORT || 8000;
 
 // routes
 app.use('/api/auth', authRoutes);
@@ -35,7 +37,7 @@ mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('Connected to MongoDB'))
     .catch(err => console.error('Could not connect to MongoDB', err));
 
-app.listen(3000, () => {
-    console.log('Server is running on port 3000');
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 })
 
