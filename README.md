@@ -7,7 +7,7 @@ A full-stack **MERN E-Commerce application** with secure authentication, OTP ver
 ## 🚀 Live Demo
 
 *(Add your deployed links here)*
-Frontend: https://e-commerse-website-frontend-wu4u.onrender.com
+Frontend: https://e-commerse-website-kohl.vercel.app/
 Backend: https://e-commerse-website-backend-b45e.onrender.com
 
 ---
@@ -16,7 +16,7 @@ Backend: https://e-commerse-website-backend-b45e.onrender.com
 
 To access the admin dashboard, use the following demo credentials:
 
-- **Email:** rachitthapliyal61@gmail.com  
+- **Email:** anurag23816@gmail.com 
 - **Password:** Rachit@123  
 
 
