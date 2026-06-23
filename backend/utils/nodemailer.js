@@ -1,28 +1,9 @@
 const nodemailer = require("nodemailer");
-const dns = require("dns").promises;
-
-const SMTP_HOSTNAME = "smtp.gmail.com";
-
-async function smtpIpv4Host() {
-  try {
-    const addrs = await dns.resolve4(SMTP_HOSTNAME);
-    if (addrs && addrs.length) {
-      return addrs[Math.floor(Math.random() * addrs.length)];
-    }
-  } catch (e) {
-    console.warn(
-      "[nodemailer] resolve4 failed, falling back to hostname:",
-      e.message,
-    );
-  }
-  return SMTP_HOSTNAME;
-}
 
 function normalizeEnvValue(value) {
   if (typeof value !== "string") return value;
   const trimmed = value.trim();
-  const noQuotes = trimmed.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
-  return noQuotes;
+  return trimmed.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
 }
 
 function normalizeAppPassword(value) {
@@ -49,25 +30,20 @@ async function createTransporter() {
     );
   }
 
-  const host = await smtpIpv4Host();
-
-  return nodemailer.createTransport({
-    host,
-    port: 587,
-    secure: false,
-    /** Required when `host` is a literal IP so STARTTLS cert matches smtp.gmail.com */
-    servername: SMTP_HOSTNAME,
-    connectionTimeout: 20000,
-    greetingTimeout: 15000,
-    socketTimeout: 25000,
-    tls: {
-      servername: SMTP_HOSTNAME,
-    },
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
     auth: {
       user: gmailUser,
       pass: gmailPass,
     },
+    secure: true,
+    connectionTimeout: 30000,
+    greetingTimeout: 20000,
+    socketTimeout: 30000,
   });
+
+  await transporter.verify();
+  return transporter;
 }
 
 /**
@@ -76,7 +52,7 @@ async function createTransporter() {
 const sendEmailForOtp = async (email, otp) => {
   try {
     const transporter = await createTransporter();
-    const fromUser = process.env.GMAIL_USER;
+    const fromUser = normalizeEnvValue(process.env.GMAIL_USER);
 
     const mailOptions = {
       from: `"Shop" <${fromUser}>`,
@@ -86,7 +62,7 @@ const sendEmailForOtp = async (email, otp) => {
       html: `<h2>Email Verification</h2><p>Your OTP for email verification is: <strong>${otp}</strong></p><p>This OTP is valid for 10 minutes.</p>`,
     };
 
-    const result = await transporter.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions);
     console.log("[sendEmailForOtp] Email sent successfully to", email);
     return true;
   } catch (error) {
