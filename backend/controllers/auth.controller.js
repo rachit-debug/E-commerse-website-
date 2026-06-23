@@ -41,13 +41,11 @@ exports.registerUser = async (req, res) => {
 
     await newUser.save();
 
-    const isMailSent = await sendEmailForOtp(email, otp);
-    if (!isMailSent) {
-      // Delete the user if email fails to avoid orphaned records
+    const mailResult = await sendEmailForOtp(email, otp);
+    if (!mailResult.success) {
       await User.deleteOne({ _id: newUser._id });
       return res.status(500).json({
-        message:
-          "Failed to send OTP email. In production, set SENDGRID_API_KEY in Render environment. In development, verify GMAIL_USER and GMAIL_PASS.",
+        message: `Failed to send OTP email. ${mailResult.error}. In production, set SENDGRID_API_KEY in Render.`,
       });
     }
 
