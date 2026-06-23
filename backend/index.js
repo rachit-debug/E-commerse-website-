@@ -18,7 +18,7 @@ const cors = require('cors');
 // middleware
 const allowedOrigins = [
     "https://e-commerse-website-kohl.vercel.app",
-  "http://localhost:5173"
+    "http://localhost:5173"
 ];
 
 app.use(cors({
