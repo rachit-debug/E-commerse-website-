@@ -1,4 +1,10 @@
 const nodemailer = require("nodemailer");
+const dns = require("dns");
+const dnsPromises = dns.promises;
+
+if (typeof dns.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
+}
 
 function normalizeEnvValue(value) {
   if (typeof value !== "string") return value;
@@ -9,6 +15,21 @@ function normalizeEnvValue(value) {
 function normalizeAppPassword(value) {
   if (typeof value !== "string") return value;
   return normalizeEnvValue(value).replace(/\s+/g, "");
+}
+
+async function resolveIpv4(hostname) {
+  try {
+    const addrs = await dnsPromises.resolve4(hostname);
+    if (addrs && addrs.length) {
+      return addrs[0];
+    }
+  } catch (error) {
+    console.warn(
+      "[nodemailer] resolve4 failed, using hostname:",
+      error.message,
+    );
+  }
+  return hostname;
 }
 
 async function createTransporter() {
@@ -30,23 +51,26 @@ async function createTransporter() {
     );
   }
 
+  const smtpHost = await resolveIpv4("smtp.gmail.com");
+
   const configs = [
     {
       name: "gmail-ssl",
-      host: "smtp.gmail.com",
+      host: smtpHost,
       port: 465,
       secure: true,
       auth: { user: gmailUser, pass: gmailPass },
       connectionTimeout: 30000,
       greetingTimeout: 20000,
       socketTimeout: 30000,
-      tls: { rejectUnauthorized: false },
+      tls: { servername: "smtp.gmail.com", rejectUnauthorized: false },
     },
     {
       name: "gmail-starttls",
-      host: "smtp.gmail.com",
+      host: smtpHost,
       port: 587,
       secure: false,
+      requireTLS: true,
       auth: { user: gmailUser, pass: gmailPass },
       connectionTimeout: 30000,
       greetingTimeout: 20000,
