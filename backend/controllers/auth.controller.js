@@ -43,15 +43,17 @@ exports.registerUser = async (req, res) => {
 
     const isMailSent = await sendEmailForOtp(email, otp);
     if (!isMailSent) {
-      return res
-        .status(500)
-        .json({
-          message:
-            "Failed to send OTP email. Check server mail configuration (GMAIL_USER, GMAIL_PASS).",
-        });
+      // Delete the user if email fails to avoid orphaned records
+      await User.deleteOne({ _id: newUser._id });
+      return res.status(500).json({
+        message:
+          "Failed to send OTP email. Please check: 1) Gmail App Password is set correctly in backend 2) Enable 2FA on Gmail account 3) Use official Google App Password, not regular password",
+      });
     }
 
-    res.status(201).json({ message: "User registered successfully" });
+    res
+      .status(201)
+      .json({ message: "User registered successfully. OTP sent to email." });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
@@ -109,12 +111,10 @@ exports.resendOtp = async (req, res) => {
     const isMailSent = await sendEmailForOtp(email, otp);
 
     if (!isMailSent) {
-      return res
-        .status(500)
-        .json({
-          message:
-            "Failed to send OTP email. Check server mail configuration (GMAIL_USER, GMAIL_PASS).",
-        });
+      return res.status(500).json({
+        message:
+          "Failed to send OTP email. Check server mail configuration (GMAIL_USER, GMAIL_PASS).",
+      });
     }
 
     res.status(200).json({ message: "OTP resent successfully" });
@@ -148,22 +148,18 @@ exports.loginUser = async (req, res) => {
         { expiresIn: "30d" },
       );
 
-      return res
-        .status(200)
-        .json({
-          message: "Login successful",
-          token,
-          isVerified: user.isVerified,
-        });
-    }
-
-    return res
-      .status(200)
-      .json({
-        message: "Login successful, but email not verified",
-        token: null,
+      return res.status(200).json({
+        message: "Login successful",
+        token,
         isVerified: user.isVerified,
       });
+    }
+
+    return res.status(200).json({
+      message: "Login successful, but email not verified",
+      token: null,
+      isVerified: user.isVerified,
+    });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
