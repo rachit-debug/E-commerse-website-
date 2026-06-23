@@ -106,12 +106,10 @@ exports.resendOtp = async (req, res) => {
     user.otpExpiry = otpExpiry;
     await user.save();
 
-    const isMailSent = await sendEmailForOtp(email, otp);
-
-    if (!isMailSent) {
+    const mailResult = await sendEmailForOtp(email, otp);
+    if (!mailResult.success) {
       return res.status(500).json({
-        message:
-          "Failed to send OTP email. Check server mail configuration (GMAIL_USER, GMAIL_PASS).",
+        message: `Failed to send OTP email. ${mailResult.error}. Check server mail configuration.`,
       });
     }
 

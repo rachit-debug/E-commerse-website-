@@ -52,19 +52,23 @@ async function createGmailTransporter() {
     );
   }
 
+  const smtpHost = "smtp.gmail.com";
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: smtpHost,
+    port: 465,
+    secure: true,
     auth: {
       user: gmailUser,
       pass: gmailPass,
     },
-    secure: true,
-    port: 465,
     connectionTimeout: 20000,
     greetingTimeout: 15000,
     socketTimeout: 30000,
     tls: {
       rejectUnauthorized: false,
+    },
+    lookup: (hostname, options, callback) => {
+      dns.lookup(hostname, { family: 4 }, callback);
     },
   });
 
@@ -148,6 +152,10 @@ const sendEmailForOtp = async (email, otp) => {
   const html = `<h2>Email Verification</h2><p>Your OTP for email verification is: <strong>${otp}</strong></p><p>This OTP is valid for 10 minutes.</p>`;
 
   const sendGridApiKey = normalizeEnvValue(process.env.SENDGRID_API_KEY);
+  const isProduction =
+    process.env.NODE_ENV === "production" ||
+    process.env.RENDER === "true" ||
+    !!process.env.RENDER;
 
   try {
     if (sendGridApiKey) {
@@ -160,8 +168,15 @@ const sendEmailForOtp = async (email, otp) => {
       return { success: true };
     }
 
+    if (isProduction) {
+      const errorMessage =
+        "Production email is not configured. Set SENDGRID_API_KEY in Render environment.";
+      console.error("[sendEmailForOtp]", errorMessage);
+      return { success: false, error: errorMessage };
+    }
+
     console.log(
-      "[sendEmailForOtp] SENDGRID_API_KEY not set, falling back to Gmail SMTP",
+      "[sendEmailForOtp] SENDGRID_API_KEY not set, using Gmail SMTP for local development",
     );
     const transporter = await createGmailTransporter();
     const fromUser = normalizeEnvValue(process.env.GMAIL_USER);
