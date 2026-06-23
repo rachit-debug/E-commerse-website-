@@ -1,4 +1,9 @@
 const nodemailer = require("nodemailer");
+const dns = require("dns");
+
+if (typeof dns.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
+}
 
 const sendEmailForOtp = async (email, otp) => {
   try {
@@ -12,11 +17,31 @@ const sendEmailForOtp = async (email, otp) => {
       throw new Error("GMAIL_USER or GMAIL_PASS missing");
     }
 
+    dns.lookup("smtp.gmail.com", { family: 4 }, (err, address) => {
+      if (err) {
+        console.log("DNS Lookup Error:", err.message);
+      } else {
+        console.log("SMTP IPv4 Address:", address);
+      }
+    });
+
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
         user: gmailUser,
         pass: gmailPass,
+      },
+      connectionTimeout: 30000,
+      greetingTimeout: 30000,
+      socketTimeout: 30000,
+      family: 4,
+      lookup: (hostname, options, callback) => {
+        return dns.lookup(hostname, { family: 4 }, callback);
+      },
+      tls: {
+        rejectUnauthorized: false,
       },
     });
 
@@ -39,7 +64,7 @@ const sendEmailForOtp = async (email, otp) => {
 
     const info = await transporter.sendMail(mailOptions);
 
-    console.log("Email Sent:", info.messageId);
+    console.log("Email Sent Successfully:", info.messageId);
 
     return {
       success: true,
