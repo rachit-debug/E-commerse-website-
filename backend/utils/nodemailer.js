@@ -16,13 +16,13 @@ const sendEmailForOtp = async (email, otp) => {
       port: Number(process.env.SMTP_PORT) || 2525,
       secure: false,
       requireTLS: true,
-      connectionTimeout: 30000,
-      greetingTimeout: 30000,
-      socketTimeout: 30000,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      connectionTimeout: 60000,
+      greetingTimeout: 60000,
+      socketTimeout: 60000,
       tls: {
         rejectUnauthorized: false,
       },
@@ -30,26 +30,24 @@ const sendEmailForOtp = async (email, otp) => {
       debug: true,
     });
 
-    console.log("Verifying SMTP connection...");
-
-    await transporter.verify();
-
-    console.log("✅ Brevo SMTP Connected Successfully");
+    console.log("Before sendMail");
 
     const info = await transporter.sendMail({
       from: process.env.SMTP_USER,
       to: email,
       subject: "OTP for Email Verification",
-      text: `Your OTP is ${otp}`,
+      text: `Your OTP for email verification is: ${otp}`,
       html: `
-        <h2>Email Verification</h2>
-        <p>Your OTP is:</p>
-        <h1>${otp}</h1>
-        <p>This OTP is valid for 10 minutes.</p>
+        <div style="font-family: Arial, sans-serif;">
+          <h2>Email Verification</h2>
+          <p>Your OTP for email verification is:</p>
+          <h1>${otp}</h1>
+          <p>This OTP is valid for 10 minutes.</p>
+        </div>
       `,
     });
 
-    console.log("✅ Email Sent Successfully");
+    console.log("After sendMail");
     console.log("Message ID:", info.messageId);
 
     return {
