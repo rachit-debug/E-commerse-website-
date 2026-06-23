@@ -53,27 +53,68 @@ async function createGmailTransporter() {
   }
 
   const smtpHost = "smtp.gmail.com";
-  const transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: 465,
-    secure: true,
-    auth: {
-      user: gmailUser,
-      pass: gmailPass,
+  const configs = [
+    {
+      name: "gmail-starttls",
+      host: smtpHost,
+      port: 587,
+      secure: false,
+      requireTLS: true,
+      auth: {
+        user: gmailUser,
+        pass: gmailPass,
+      },
+      connectionTimeout: 20000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
+      tls: {
+        rejectUnauthorized: false,
+      },
+      lookup: (hostname, options, callback) => {
+        dns.lookup(hostname, { family: 4 }, callback);
+      },
     },
-    connectionTimeout: 20000,
-    greetingTimeout: 15000,
-    socketTimeout: 30000,
-    tls: {
-      rejectUnauthorized: false,
+    {
+      name: "gmail-ssl",
+      host: smtpHost,
+      port: 465,
+      secure: true,
+      auth: {
+        user: gmailUser,
+        pass: gmailPass,
+      },
+      connectionTimeout: 20000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
+      tls: {
+        rejectUnauthorized: false,
+      },
+      lookup: (hostname, options, callback) => {
+        dns.lookup(hostname, { family: 4 }, callback);
+      },
     },
-    lookup: (hostname, options, callback) => {
-      dns.lookup(hostname, { family: 4 }, callback);
-    },
-  });
+  ];
 
-  await transporter.verify();
-  return transporter;
+  let lastError = null;
+  for (const config of configs) {
+    try {
+      const transporter = nodemailer.createTransport(config);
+      console.log(
+        `[nodemailer] trying ${config.name} via ${config.host}:${config.port}`,
+      );
+      await transporter.verify();
+      console.log(`[nodemailer] ${config.name} verified successfully`);
+      return transporter;
+    } catch (error) {
+      lastError = error;
+      console.warn(
+        `[nodemailer] ${config.name} failed:`,
+        error.message || error,
+      );
+    }
+  }
+
+  throw lastError;
 }
 
 function sendViaSendGrid(email, subject, text, html) {
@@ -152,14 +193,31 @@ const sendEmailForOtp = async (email, otp) => {
   const html = `<h2>Email Verification</h2><p>Your OTP for email verification is: <strong>${otp}</strong></p><p>This OTP is valid for 10 minutes.</p>`;
 
   const sendGridApiKey = normalizeEnvValue(process.env.SENDGRID_API_KEY);
-  const isProduction =
-    process.env.NODE_ENV === "production" ||
-    process.env.RENDER === "true" ||
-    !!process.env.RENDER;
+  const gmailUser = normalizeEnvValue(process.env.GMAIL_USER);
+  const gmailPass = normalizeAppPassword(process.env.GMAIL_PASS);
 
   try {
+    if (gmailUser && gmailPass) {
+      console.log("[sendEmailForOtp] using Gmail SMTP from .env");
+      const transporter = await createGmailTransporter();
+      const mailOptions = {
+        from: `"Shop" <${gmailUser}>`,
+        to: email,
+        subject,
+        text,
+        html,
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log(
+        "[sendEmailForOtp] Email sent successfully via Gmail SMTP to",
+        email,
+      );
+      return { success: true };
+    }
+
     if (sendGridApiKey) {
-      console.log("[sendEmailForOtp] using SendGrid API");
+      console.log("[sendEmailForOtp] using SendGrid API fallback");
       await sendViaSendGrid(email, subject, text, html);
       console.log(
         "[sendEmailForOtp] Email sent successfully via SendGrid to",
@@ -168,33 +226,10 @@ const sendEmailForOtp = async (email, otp) => {
       return { success: true };
     }
 
-    if (isProduction) {
-      const errorMessage =
-        "Production email is not configured. Set SENDGRID_API_KEY in Render environment.";
-      console.error("[sendEmailForOtp]", errorMessage);
-      return { success: false, error: errorMessage };
-    }
-
-    console.log(
-      "[sendEmailForOtp] SENDGRID_API_KEY not set, using Gmail SMTP for local development",
-    );
-    const transporter = await createGmailTransporter();
-    const fromUser = normalizeEnvValue(process.env.GMAIL_USER);
-
-    const mailOptions = {
-      from: `"Shop" <${fromUser}>`,
-      to: email,
-      subject,
-      text,
-      html,
-    };
-
-    await transporter.sendMail(mailOptions);
-    console.log(
-      "[sendEmailForOtp] Email sent successfully via Gmail SMTP to",
-      email,
-    );
-    return { success: true };
+    const errorMessage =
+      "Email is not configured. Set GMAIL_USER and GMAIL_PASS in .env, or provide SENDGRID_API_KEY.";
+    console.error("[sendEmailForOtp]", errorMessage);
+    return { success: false, error: errorMessage };
   } catch (error) {
     const errorDetails = {
       message: error.message,
