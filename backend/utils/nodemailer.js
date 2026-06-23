@@ -17,6 +17,8 @@ function normalizeAppPassword(value) {
   return normalizeEnvValue(value).replace(/\s+/g, "");
 }
 
+const https = require("https");
+
 async function resolveIpv4(hostname) {
   try {
     const addrs = await dnsPromises.resolve4(hostname);
@@ -32,7 +34,7 @@ async function resolveIpv4(hostname) {
   return hostname;
 }
 
-async function createTransporter() {
+async function createGmailTransporter() {
   const gmailUser = normalizeEnvValue(process.env.GMAIL_USER);
   const gmailPass = normalizeAppPassword(process.env.GMAIL_PASS);
 
@@ -104,20 +106,101 @@ async function createTransporter() {
   throw lastError;
 }
 
+function sendViaSendGrid(email, subject, text, html) {
+  const apiKey = normalizeEnvValue(process.env.SENDGRID_API_KEY);
+  const from =
+    normalizeEnvValue(process.env.SENDGRID_FROM_EMAIL) ||
+    normalizeEnvValue(process.env.GMAIL_USER);
+
+  if (!apiKey) {
+    throw new Error(
+      "SendGrid API key is not configured. Set SENDGRID_API_KEY.",
+    );
+  }
+  if (!from) {
+    throw new Error(
+      "SendGrid from address is not configured. Set SENDGRID_FROM_EMAIL or GMAIL_USER.",
+    );
+  }
+
+  const body = JSON.stringify({
+    personalizations: [{ to: [{ email }] }],
+    from: { email: from },
+    subject,
+    content: [
+      { type: "text/plain", value: text },
+      { type: "text/html", value: html },
+    ],
+  });
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        hostname: "api.sendgrid.com",
+        path: "/v3/mail/send",
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+        },
+        timeout: 30000,
+      },
+      (res) => {
+        let responseData = "";
+        res.on("data", (chunk) => {
+          responseData += chunk;
+        });
+        res.on("end", () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve();
+          } else {
+            reject(
+              new Error(`SendGrid failed ${res.statusCode}: ${responseData}`),
+            );
+          }
+        });
+      },
+    );
+
+    req.on("error", reject);
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("SendGrid request timeout"));
+    });
+    req.write(body);
+    req.end();
+  });
+}
+
 /**
  * Sends OTP email. Returns true on success, false on failure (logs error).
  */
 const sendEmailForOtp = async (email, otp) => {
+  const subject = "OTP for Email Verification";
+  const text = `Your OTP for email verification is: ${otp}`;
+  const html = `<h2>Email Verification</h2><p>Your OTP for email verification is: <strong>${otp}</strong></p><p>This OTP is valid for 10 minutes.</p>`;
+
   try {
-    const transporter = await createTransporter();
+    if (normalizeEnvValue(process.env.SENDGRID_API_KEY)) {
+      console.log("[sendEmailForOtp] using SendGrid API");
+      await sendViaSendGrid(email, subject, text, html);
+      console.log(
+        "[sendEmailForOtp] Email sent successfully via SendGrid to",
+        email,
+      );
+      return true;
+    }
+
+    const transporter = await createGmailTransporter();
     const fromUser = normalizeEnvValue(process.env.GMAIL_USER);
 
     const mailOptions = {
       from: `"Shop" <${fromUser}>`,
       to: email,
-      subject: "OTP for Email Verification",
-      text: `Your OTP for email verification is: ${otp}`,
-      html: `<h2>Email Verification</h2><p>Your OTP for email verification is: <strong>${otp}</strong></p><p>This OTP is valid for 10 minutes.</p>`,
+      subject,
+      text,
+      html,
     };
 
     await transporter.sendMail(mailOptions);
