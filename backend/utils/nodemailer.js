@@ -18,13 +18,34 @@ async function smtpIpv4Host() {
   return SMTP_HOSTNAME;
 }
 
+function normalizeEnvValue(value) {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  const noQuotes = trimmed.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
+  return noQuotes;
+}
+
+function normalizeAppPassword(value) {
+  if (typeof value !== "string") return value;
+  return normalizeEnvValue(value).replace(/\s+/g, "");
+}
+
 async function createTransporter() {
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
-    const missing = [];
-    if (!process.env.GMAIL_USER) missing.push("GMAIL_USER");
-    if (!process.env.GMAIL_PASS) missing.push("GMAIL_PASS");
+  const gmailUser = normalizeEnvValue(process.env.GMAIL_USER);
+  const gmailPass = normalizeAppPassword(process.env.GMAIL_PASS);
+
+  const missing = [];
+  if (!gmailUser) missing.push("GMAIL_USER");
+  if (!gmailPass) missing.push("GMAIL_PASS");
+  if (missing.length > 0) {
     throw new Error(
       `Email is not configured: missing ${missing.join(", ")}. Use a Gmail App Password from https://myaccount.google.com/apppasswords`,
+    );
+  }
+
+  if (gmailPass.length !== 16) {
+    throw new Error(
+      `Email password invalid: GMAIL_PASS must be a 16-character Gmail App Password with no spaces. Received length ${gmailPass.length}.`,
     );
   }
 
@@ -43,8 +64,8 @@ async function createTransporter() {
       servername: SMTP_HOSTNAME,
     },
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_PASS,
+      user: gmailUser,
+      pass: gmailPass,
     },
   });
 }
