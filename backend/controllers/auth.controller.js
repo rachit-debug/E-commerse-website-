@@ -47,7 +47,7 @@ exports.registerUser = async (req, res) => {
       await User.deleteOne({ _id: newUser._id });
       return res.status(500).json({
         message:
-          "Failed to send OTP email. Please check: 1) Gmail App Password is set correctly in backend 2) Enable 2FA on Gmail account 3) Use official Google App Password, not regular password",
+          "Failed to send OTP email. In production, set SENDGRID_API_KEY in Render environment. In development, verify GMAIL_USER and GMAIL_PASS.",
       });
     }
 

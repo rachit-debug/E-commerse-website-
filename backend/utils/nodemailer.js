@@ -198,11 +198,15 @@ const sendEmailForOtp = async (email, otp) => {
     }
 
     if (isProduction) {
-      throw new Error(
-        "Production email is not configured. Set SENDGRID_API_KEY in Render environment.",
+      console.warn(
+        "[sendEmailForOtp] Production email not configured. Set SENDGRID_API_KEY in Render environment.",
       );
+      return false;
     }
 
+    console.log(
+      "[sendEmailForOtp] SENDGRID_API_KEY not set, using Gmail SMTP for local development",
+    );
     const transporter = await createGmailTransporter();
     const fromUser = normalizeEnvValue(process.env.GMAIL_USER);
 
