@@ -2,18 +2,9 @@ const nodemailer = require("nodemailer");
 
 const sendEmailForOtp = async (email, otp) => {
   try {
-    console.log("========== BREVO DEBUG ==========");
-    console.log("SMTP_HOST:", process.env.SMTP_HOST);
-    console.log("SMTP_PORT:", process.env.SMTP_PORT);
-    console.log("SMTP_USER:", process.env.SMTP_USER);
-    console.log(
-      "SMTP_PASS_LENGTH:",
-      process.env.SMTP_PASS ? process.env.SMTP_PASS.length : 0
-    );
-
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-      port: 2525, // hardcoded for testing
+      port: Number(process.env.SMTP_PORT) || 2525,
       secure: false,
       requireTLS: true,
       auth: {
@@ -23,29 +14,24 @@ const sendEmailForOtp = async (email, otp) => {
       connectionTimeout: 60000,
       greetingTimeout: 60000,
       socketTimeout: 60000,
-      tls: {
-        rejectUnauthorized: false,
-      },
-      logger: true,
-      debug: true,
     });
 
-    console.log("Before sendMail");
-
     const info = await transporter.sendMail({
-      from: process.env.SMTP_USER,
+      from: `"Shop" <${process.env.FROM_EMAIL}>`,
       to: email,
       subject: "OTP for Email Verification",
       text: `Your OTP for email verification is: ${otp}`,
       html: `
-        <h2>Email Verification</h2>
-        <p>Your OTP is:</p>
-        <h1>${otp}</h1>
-        <p>This OTP is valid for 10 minutes.</p>
+        <div style="font-family: Arial, sans-serif;">
+          <h2>Email Verification</h2>
+          <p>Your OTP for email verification is:</p>
+          <h1>${otp}</h1>
+          <p>This OTP is valid for 10 minutes.</p>
+        </div>
       `,
     });
 
-    console.log("After sendMail");
+    console.log("✅ Email Sent Successfully");
     console.log("Message ID:", info.messageId);
 
     return {
@@ -53,11 +39,11 @@ const sendEmailForOtp = async (email, otp) => {
       messageId: info.messageId,
     };
   } catch (error) {
-    console.error("❌ Email Error");
-    console.error("Message:", error.message);
-    console.error("Code:", error.code);
-    console.error("Response:", error.response);
-    console.error("Stack:", error.stack);
+    console.error("❌ Email Error:", {
+      message: error.message,
+      code: error.code,
+      response: error.response,
+    });
 
     return {
       success: false,
