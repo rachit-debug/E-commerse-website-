@@ -30,20 +30,54 @@ async function createTransporter() {
     );
   }
 
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: gmailUser,
-      pass: gmailPass,
+  const configs = [
+    {
+      name: "gmail-ssl",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: { user: gmailUser, pass: gmailPass },
+      connectionTimeout: 30000,
+      greetingTimeout: 20000,
+      socketTimeout: 30000,
+      tls: { rejectUnauthorized: false },
     },
-    secure: true,
-    connectionTimeout: 30000,
-    greetingTimeout: 20000,
-    socketTimeout: 30000,
-  });
+    {
+      name: "gmail-starttls",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: { user: gmailUser, pass: gmailPass },
+      connectionTimeout: 30000,
+      greetingTimeout: 20000,
+      socketTimeout: 30000,
+      tls: { servername: "smtp.gmail.com", rejectUnauthorized: false },
+    },
+  ];
 
-  await transporter.verify();
-  return transporter;
+  let lastError = null;
+
+  for (const config of configs) {
+    try {
+      const transporter = nodemailer.createTransport(config);
+      console.log(
+        `[nodemailer] trying email transport ${config.name} ${config.host}:${config.port}`,
+      );
+      await transporter.verify();
+      console.log(
+        `[nodemailer] transport ${config.name} verified successfully`,
+      );
+      return transporter;
+    } catch (error) {
+      lastError = error;
+      console.error(
+        `[nodemailer] transport ${config.name} failed:`,
+        error.message || error,
+      );
+    }
+  }
+
+  throw lastError;
 }
 
 /**
