@@ -52,7 +52,7 @@ async function createGmailTransporter() {
     );
   }
 
-  const smtpHost = "smtp.gmail.com";
+  const smtpHost = await resolveIpv4("smtp.gmail.com");
   const configs = [
     {
       name: "gmail-starttls",
@@ -68,6 +68,7 @@ async function createGmailTransporter() {
       greetingTimeout: 15000,
       socketTimeout: 30000,
       tls: {
+        servername: "smtp.gmail.com",
         rejectUnauthorized: false,
       },
       lookup: (hostname, options, callback) => {
@@ -87,6 +88,7 @@ async function createGmailTransporter() {
       greetingTimeout: 15000,
       socketTimeout: 30000,
       tls: {
+        servername: "smtp.gmail.com",
         rejectUnauthorized: false,
       },
       lookup: (hostname, options, callback) => {
