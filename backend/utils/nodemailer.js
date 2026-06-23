@@ -13,7 +13,7 @@ const sendEmailForOtp = async (email, otp) => {
 
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 2525,
+      port: 2525, // hardcoded for testing
       secure: false,
       requireTLS: true,
       auth: {
@@ -38,12 +38,10 @@ const sendEmailForOtp = async (email, otp) => {
       subject: "OTP for Email Verification",
       text: `Your OTP for email verification is: ${otp}`,
       html: `
-        <div style="font-family: Arial, sans-serif;">
-          <h2>Email Verification</h2>
-          <p>Your OTP for email verification is:</p>
-          <h1>${otp}</h1>
-          <p>This OTP is valid for 10 minutes.</p>
-        </div>
+        <h2>Email Verification</h2>
+        <p>Your OTP is:</p>
+        <h1>${otp}</h1>
+        <p>This OTP is valid for 10 minutes.</p>
       `,
     });
 
