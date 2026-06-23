@@ -1,6 +1,7 @@
 const nodemailer = require("nodemailer");
 const dns = require("dns");
 const dnsPromises = dns.promises;
+const https = require("https");
 
 if (typeof dns.setDefaultResultOrder === "function") {
   dns.setDefaultResultOrder("ipv4first");
@@ -16,8 +17,6 @@ function normalizeAppPassword(value) {
   if (typeof value !== "string") return value;
   return normalizeEnvValue(value).replace(/\s+/g, "");
 }
-
-const https = require("https");
 
 async function resolveIpv4(hostname) {
   try {
