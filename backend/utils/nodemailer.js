@@ -180,8 +180,14 @@ const sendEmailForOtp = async (email, otp) => {
   const text = `Your OTP for email verification is: ${otp}`;
   const html = `<h2>Email Verification</h2><p>Your OTP for email verification is: <strong>${otp}</strong></p><p>This OTP is valid for 10 minutes.</p>`;
 
+  const sendGridApiKey = normalizeEnvValue(process.env.SENDGRID_API_KEY);
+  const isProduction =
+    process.env.NODE_ENV === "production" ||
+    process.env.RENDER === "true" ||
+    process.env.RENDER;
+
   try {
-    if (normalizeEnvValue(process.env.SENDGRID_API_KEY)) {
+    if (sendGridApiKey) {
       console.log("[sendEmailForOtp] using SendGrid API");
       await sendViaSendGrid(email, subject, text, html);
       console.log(
@@ -189,6 +195,12 @@ const sendEmailForOtp = async (email, otp) => {
         email,
       );
       return true;
+    }
+
+    if (isProduction) {
+      throw new Error(
+        "Production email is not configured. Set SENDGRID_API_KEY in Render environment.",
+      );
     }
 
     const transporter = await createGmailTransporter();
